@@ -143,6 +143,21 @@ class LogisticRegression(object):
         # i.e., the mean log-likelihood across the minibatch.
         return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
         # end-snippet-2
+    
+    def quadratic_cost(self,y):
+        # Create a zero matrix where rows are number of pairs in minibatch
+        # and columns are number of output class. Set the correct element
+        # corresponding to correct class as 1. Use this as output of minibatch.
+        # Subtract the output obtained from this matrix. Square all elements.
+        # Find sum of all columns in a row, which corresponds to error for each
+        # vector in minibatch. Take a mean over all such erros
+        z=T.inc_subtensor(
+            T.zeros(
+                (y.shape[0],self.p_y_given_x.shape[1])
+            )[:,y],
+            1
+        )
+        return T.mean(T.sum((z - self.p_y_given_x)**2,axis=1))
 
     def errors(self, y):
         """Return a float representing the number of errors in the minibatch

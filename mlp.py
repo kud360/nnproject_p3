@@ -37,7 +37,7 @@ from logistic_sgd import LogisticRegression, load_data
 # start-snippet-1
 class HiddenLayer(object):
     def __init__(self, rng, input, n_in, n_out, W=None, b=None,
-                 activation=T.tanh):
+                 activation=T.nnet.sigmoid):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
         sigmoidal activation function. Weight matrix W is of shape (n_in,n_out)
@@ -152,7 +152,7 @@ class MLP(object):
             input=input,
             n_in=n_in,
             n_out=n_hidden,
-            activation=T.tanh
+            activation=T.nnet.sigmoid
         )
 
         # The logistic regression layer gets as input the hidden units
@@ -182,6 +182,10 @@ class MLP(object):
         # logistic regression layer
         self.negative_log_likelihood = (
             self.logRegressionLayer.negative_log_likelihood
+        )
+        
+        self.quadratic_cost = (
+            self.logRegressionLayer.quadratic_cost
         )
         # same holds for the function computing the number of errors
         self.errors = self.logRegressionLayer.errors
@@ -262,9 +266,9 @@ def test_mlp(learning_rate=0.01, L1_reg=0.00, L2_reg=0.0001, n_epochs=1000,
     # the model plus the regularization terms (L1 and L2); cost is expressed
     # here symbolically
     cost = (
-        classifier.negative_log_likelihood(y)
-        + L1_reg * classifier.L1
-        + L2_reg * classifier.L2_sqr
+        classifier.quadratic_cost(y)
+    #    + L1_reg * classifier.L1
+    #    + L2_reg * classifier.L2_sqr
     )
     # end-snippet-4
 
