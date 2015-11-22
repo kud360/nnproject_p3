@@ -186,18 +186,20 @@ def load_data(dataset):
         # Check if dataset is in the data directory.
         new_path = os.path.join(
             os.path.split(__file__)[0],
-            "..",
             "data",
             dataset
         )
         if os.path.isfile(new_path) or data_file == 'mnist.pkl.gz':
             dataset = new_path
+            data_dir = os.path.split(new_path)[0]
 
     if (not os.path.isfile(dataset)) and data_file == 'mnist.pkl.gz':
         import urllib
         origin = (
             'http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz'
         )
+        if (not os.path.isdir(data_dir)):
+            os.makedirs(data_dir)
         print 'Downloading data from %s' % origin
         urllib.urlretrieve(origin, dataset)
 
