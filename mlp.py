@@ -155,7 +155,7 @@ class MLP(object):
         self.input = input
 
 
-def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30, min_error=0,
+def test_mlp(learning_rate=0.004, momentum=0.9, n_epochs=30, min_error=0,
              dataset='mnist.pkl.gz', batch_size=1, n_hidden=30):
     """
     Demonstrate stochastic gradient descent optimization for a multilayer
@@ -193,7 +193,6 @@ def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30, min_error=0,
     ######################
     # BUILD ACTUAL MODEL #
     ######################
-    print '... building the model'
 
     # allocate symbolic variables for the data
     index = T.lscalar()  # index to a [mini]batch
@@ -272,24 +271,27 @@ def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30, min_error=0,
     ###############
     # TRAIN MODEL #
     ###############
-    print '... training'
 
-    epoch = 0
-    while (epoch < n_epochs):
-        epoch = epoch + 1
-        cost = numpy.zeros([n_train_batches])
-        for minibatch_index in xrange(n_train_batches):
-            cost[minibatch_index] = train_model(minibatch_index)
-            iter = (epoch - 1) * n_train_batches + minibatch_index
-            
-        validation_losses = [validate_model(i) for i in xrange(n_valid_batches)]
-        training_losses = [validate_on_training_model(i) for i in xrange(n_train_batches)]
-        
-        this_validation_loss = numpy.mean(validation_losses)
-        this_training_loss = numpy.mean(training_losses)
-        
-        average_cost = numpy.mean(cost)
-        
-        print("%f,%f,%f,%f,%i,%f,%f,%f" % (momentum,learning_rate,n_hidden,min_error,epoch,this_training_loss * 100,this_validation_loss * 100,average_cost))        
+    epoch = 0    
+    this_validation_loss = 100
+    
+    with open('out.csv','w') as f:
+        while (epoch < n_epochs and (this_validation_loss > min_error if min_error else True)):
+            epoch = epoch + 1
+            cost = numpy.zeros([n_train_batches])
+            for minibatch_index in xrange(n_train_batches):
+                cost[minibatch_index] = train_model(minibatch_index)            
+                iter = (epoch - 1) * n_train_batches + minibatch_index
+
+            validation_losses = [validate_model(i) for i in xrange(n_valid_batches)]
+            training_losses = [validate_on_training_model(i) for i in xrange(n_train_batches)]
+
+            this_validation_loss = numpy.mean(validation_losses)
+            this_training_loss = numpy.mean(training_losses)
+
+            average_cost = numpy.mean(cost)
+
+            f.write("%f,%f,%f,%f,%i,%f,%f,%f\n" % (momentum,learning_rate,n_hidden,min_error,epoch,this_training_loss* 100,this_validation_loss * 100,average_cost))
+            print("m:%f,a:%f,h:%f,i:%i"%(momentum,learning_rate,n_hidden,epoch))
 if __name__ == '__main__':
     test_mlp()
