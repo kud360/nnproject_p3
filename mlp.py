@@ -155,7 +155,7 @@ class MLP(object):
         self.input = input
 
 
-def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30,
+def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30, min_error=0,
              dataset='mnist.pkl.gz', batch_size=1, n_hidden=30):
     """
     Demonstrate stochastic gradient descent optimization for a multilayer
@@ -238,6 +238,15 @@ def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30,
             y: valid_set_y[index * batch_size:(index + 1) * batch_size]
         }
     )
+    
+    validate_on_training_model = theano.function(
+        inputs=[index],
+        outputs=classifier.errors(y),
+        givens={
+            x: train_set_x[index * batch_size:(index + 1) * batch_size],
+            y: train_set_y[index * batch_size:(index + 1) * batch_size]
+        }
+    )
 
     def gradient_updates_momentum(cost, params, learning_rate, momentum):
         updates = []
@@ -268,12 +277,19 @@ def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30,
     epoch = 0
     while (epoch < n_epochs):
         epoch = epoch + 1
+        cost = numpy.zeros([n_train_batches])
         for minibatch_index in xrange(n_train_batches):
-            minibatch_avg_cost = train_model(minibatch_index)
+            cost[minibatch_index] = train_model(minibatch_index)
             iter = (epoch - 1) * n_train_batches + minibatch_index
+            
         validation_losses = [validate_model(i) for i in xrange(n_valid_batches)]
-        this_validation_loss = numpy.mean(validation_losses)
-        print('epoch %i, validation error %f'%(epoch,this_validation_loss * 100))
+        training_losses = [validate_on_training_model(i) for i in xrange(n_train_batches)]
         
+        this_validation_loss = numpy.mean(validation_losses)
+        this_training_loss = numpy.mean(training_losses)
+        
+        average_cost = numpy.mean(cost)
+        
+        print("%f,%f,%f,%f,%i,%f,%f,%f" % (momentum,learning_rate,n_hidden,min_error,epoch,this_training_loss * 100,this_validation_loss * 100,average_cost))        
 if __name__ == '__main__':
     test_mlp()

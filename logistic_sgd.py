@@ -85,7 +85,8 @@ class LogisticRegression(object):
         # vector in minibatch. Take a mean over all such erros
         z=T.inc_subtensor(
             T.zeros(
-                (y.shape[0],self.p_y_given_x.shape[1])
+                (y.shape[0],self.p_y_given_x.shape[1]),
+                dtype=config.floatX
             )[:,y],
             1
         )
