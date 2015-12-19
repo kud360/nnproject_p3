@@ -156,7 +156,7 @@ class MLP(object):
 
 
 def test_mlp(learning_rate=0.004, momentum=0.9, n_epochs=30, min_error=0,
-             dataset='mnist.pkl.gz', batch_size=1, n_hidden=30):
+             dataset='mnist.pkl.gz', batch_size=1, n_hidden=30, out = 'out.csv'):
     """
     Demonstrate stochastic gradient descent optimization for a multilayer
     perceptron
@@ -274,9 +274,10 @@ def test_mlp(learning_rate=0.004, momentum=0.9, n_epochs=30, min_error=0,
 
     epoch = 0    
     this_validation_loss = 100
-    
-    with open('out.csv','w') as f:
-        while (epoch < n_epochs and (this_validation_loss > min_error if min_error else True)):
+    c = 0
+    with open(out,'w') as f:
+        
+        while (epoch < 100 and (epoch < n_epochs or not c)):
             epoch = epoch + 1
             cost = numpy.zeros([n_train_batches])
             for minibatch_index in xrange(n_train_batches):
@@ -290,8 +291,23 @@ def test_mlp(learning_rate=0.004, momentum=0.9, n_epochs=30, min_error=0,
             this_training_loss = numpy.mean(training_losses)
 
             average_cost = numpy.mean(cost)
+            
+            if(min_error > this_validation_loss):
+                c = 1
 
-            f.write("%f,%f,%f,%f,%i,%f,%f,%f\n" % (momentum,learning_rate,n_hidden,min_error,epoch,this_training_loss* 100,this_validation_loss * 100,average_cost))
+            f.write("%f,%f,%f,%f,%i,%f,%f,%f,%d\n" % (momentum,learning_rate,n_hidden,min_error,epoch,this_training_loss* 100,this_validation_loss * 100,average_cost,c))
             print("m:%f,a:%f,h:%f,i:%i"%(momentum,learning_rate,n_hidden,epoch))
+
+def iterParamCombos(h,fname):
+    alpha = 0.1
+    m = 0.0
+    while alpha <= 1.0:
+        alphaVal = alpha ** 2
+        while m <= 1:
+            test(learning_rate=alpha,momentum=m,n_epochs=30,dataset='',out=fname)            
+            m = round(m + 0.1, 1)
+    m = 0.0
+    alpha = round(alpha + 0.1, 1)
+        
 if __name__ == '__main__':
-    test_mlp()
+    iterParamCombos(sys.argv[1],sys.argv[2])
