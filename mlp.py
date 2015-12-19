@@ -275,6 +275,8 @@ def test_mlp(learning_rate=0.004, momentum=0.9, n_epochs=30, min_error=0,
     epoch = 0    
     this_validation_loss = 100
     c = 0
+    average_cost = 0
+ 
     with open(out,'w') as f:
         
         while (epoch < 100 and (epoch < n_epochs or not c)):
@@ -290,24 +292,24 @@ def test_mlp(learning_rate=0.004, momentum=0.9, n_epochs=30, min_error=0,
             this_validation_loss = numpy.mean(validation_losses)
             this_training_loss = numpy.mean(training_losses)
 
-            average_cost = numpy.mean(cost)
-            
-            if(min_error > this_validation_loss):
+            t = numpy.mean(cost)            
+            if(min_error > (t-average_cost)/average_cost):
                 c = 1
+                
+            average_cost = t
 
             f.write("%f,%f,%f,%f,%i,%f,%f,%f,%d\n" % (momentum,learning_rate,n_hidden,min_error,epoch,this_training_loss* 100,this_validation_loss * 100,average_cost,c))
-            print("m:%f,a:%f,h:%f,i:%i"%(momentum,learning_rate,n_hidden,epoch))
+            print("m:%f,a:%f,h:%f,c:$f,i:%i"%(momentum,learning_rate,n_hidden,average_cost,epoch))
 
 def iterParamCombos(h,fname):
-    alpha = 0.1
     m = 0.0
-    while alpha <= 1.0:
-        alphaVal = alpha ** 2
-        while m <= 1:
-            test(learning_rate=alpha,momentum=m,n_epochs=30,dataset='',out=fname)            
-            m = round(m + 0.1, 1)
-    m = 0.0
-    alpha = round(alpha + 0.1, 1)
+    while m <= 1:
+        alpha = 0.1
+        while alpha <= 1.0:
+            alphaVal = alpha ** 2
+            test_mlp(learning_rate=alphaVal,n_hidden=int(h),momentum=m,n_epochs=30,out=fname,min_error=0.01)
+            alpha = round(alpha + 0.1, 1)
+        m = round(m + 0.1, 1)
         
 if __name__ == '__main__':
     iterParamCombos(sys.argv[1],sys.argv[2])
