@@ -34,7 +34,6 @@ import theano.tensor as T
 from logistic_sgd import LogisticRegression, load_data
 
 
-# start-snippet-1
 class HiddenLayer(object):
     def __init__(self, rng, input, n_in, n_out, W=None, b=None,
                  activation=T.nnet.sigmoid):
@@ -45,7 +44,7 @@ class HiddenLayer(object):
 
         NOTE : The nonlinearity used here is tanh
 
-        Hidden unit activation is given by: tanh(dot(input,W) + b)
+        Hidden unit activation is given by: sigmoid(dot(input,W) + b)
 
         :type rng: numpy.random.RandomState
         :param rng: a random number generator used to initialize weights
@@ -121,32 +120,7 @@ class MLP(object):
     """
 
     def __init__(self, rng, input, n_in, n_hidden, n_out):
-        """Initialize the parameters for the multilayer perceptron
-
-        :type rng: numpy.random.RandomState
-        :param rng: a random number generator used to initialize weights
-
-        :type input: theano.tensor.TensorType
-        :param input: symbolic variable that describes the input of the
-        architecture (one minibatch)
-
-        :type n_in: int
-        :param n_in: number of input units, the dimension of the space in
-        which the datapoints lie
-
-        :type n_hidden: int
-        :param n_hidden: number of hidden units
-
-        :type n_out: int
-        :param n_out: number of output units, the dimension of the space in
-        which the labels lie
-
-        """
-
-        # Since we are dealing with a one hidden layer MLP, this will translate
-        # into a HiddenLayer with a tanh activation function connected to the
-        # LogisticRegression layer; the activation function can be replaced by
-        # sigmoid or any other nonlinear function
+        
         self.hiddenLayer = HiddenLayer(
             rng=rng,
             input=input,
@@ -154,52 +128,34 @@ class MLP(object):
             n_out=n_hidden,
             activation=T.nnet.sigmoid
         )
-
-        # The logistic regression layer gets as input the hidden units
-        # of the hidden layer
+       
         self.logRegressionLayer = LogisticRegression(
             input=self.hiddenLayer.output,
             n_in=n_hidden,
             n_out=n_out
         )
-        # end-snippet-2 start-snippet-3
-        # L1 norm ; one regularization option is to enforce L1 norm to
-        # be small
-        self.L1 = (
-            abs(self.hiddenLayer.W).sum()
-            + abs(self.logRegressionLayer.W).sum()
-        )
+        
 
-        # square of L2 norm ; one regularization option is to enforce
-        # square of L2 norm to be small
-        self.L2_sqr = (
-            (self.hiddenLayer.W ** 2).sum()
-            + (self.logRegressionLayer.W ** 2).sum()
-        )
-
-        # negative log likelihood of the MLP is given by the negative
-        # log likelihood of the output of the model, computed in the
-        # logistic regression layer
-        self.negative_log_likelihood = (
-            self.logRegressionLayer.negative_log_likelihood
-        )
+        # Quadratic Cost of the MLP is given by the quadratic cost
+        # of the output of the model, computed in the logistic 
+        # regression layer        
         
         self.quadratic_cost = (
             self.logRegressionLayer.quadratic_cost
         )
+        
         # same holds for the function computing the number of errors
         self.errors = self.logRegressionLayer.errors
 
         # the parameters of the model are the parameters of the two layer it is
         # made out of
         self.params = self.hiddenLayer.params + self.logRegressionLayer.params
-        # end-snippet-3
 
         # keep track of model input
         self.input = input
 
 
-def test_mlp(learning_rate=0.004, L1_reg=0.00, L2_reg=0.0001, n_epochs=30,
+def test_mlp(learning_rate=0.004, momentum=0.0, n_epochs=30,
              dataset='mnist.pkl.gz', batch_size=1, n_hidden=30):
     """
     Demonstrate stochastic gradient descent optimization for a multilayer
@@ -210,14 +166,9 @@ def test_mlp(learning_rate=0.004, L1_reg=0.00, L2_reg=0.0001, n_epochs=30,
     :type learning_rate: float
     :param learning_rate: learning rate used (factor for the stochastic
     gradient
-
-    :type L1_reg: float
-    :param L1_reg: L1-norm's weight when added to the cost (see
-    regularization)
-
-    :type L2_reg: float
-    :param L2_reg: L2-norm's weight when added to the cost (see
-    regularization)
+    
+    :type momentum: float
+    :param momentum: momentum used for updating the paramenters
 
     :type n_epochs: int
     :param n_epochs: maximal number of epochs to run the optimizer
@@ -261,16 +212,12 @@ def test_mlp(learning_rate=0.004, L1_reg=0.00, L2_reg=0.0001, n_epochs=30,
         n_out=10
     )
 
-    # start-snippet-4
-    # the cost we minimize during training is the negative log likelihood of
-    # the model plus the regularization terms (L1 and L2); cost is expressed
-    # here symbolically
+    # the cost we minimize during training is the quadtratic cost of the
+    # model
+    
     cost = (
         classifier.quadratic_cost(y)
-    #    + L1_reg * classifier.L1
-    #    + L2_reg * classifier.L2_sqr
     )
-    # end-snippet-4
 
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
@@ -292,36 +239,26 @@ def test_mlp(learning_rate=0.004, L1_reg=0.00, L2_reg=0.0001, n_epochs=30,
         }
     )
 
-    # start-snippet-5
-    # compute the gradient of cost with respect to theta (sotred in params)
-    # the resulting gradients will be stored in a list gparams
-    gparams = [T.grad(cost, param) for param in classifier.params]
-
-    # specify how to update the parameters of the model as a list of
-    # (variable, update expression) pairs
-
-    # given two lists of the same length, A = [a1, a2, a3, a4] and
-    # B = [b1, b2, b3, b4], zip generates a list C of same size, where each
-    # element is a pair formed from the two lists :
-    #    C = [(a1, b1), (a2, b2), (a3, b3), (a4, b4)]
-    updates = [
-        (param, param - learning_rate * gparam)
-        for param, gparam in zip(classifier.params, gparams)
-    ]
+    def gradient_updates_momentum(cost, params, learning_rate, momentum):
+        updates = []
+        for param in params:        
+            param_update = theano.shared(param.get_value()*0., broadcastable=param.broadcastable)        
+            updates.append((param, param - learning_rate*param_update))
+            updates.append((param_update, momentum*param_update + (1. - momentum)*T.grad(cost, param)))
+        return updates
 
     # compiling a Theano function `train_model` that returns the cost, but
     # in the same time updates the parameter of the model based on the rules
-    # defined in `updates`
+    # defined in `gradient_updates_momentum`
     train_model = theano.function(
         inputs=[index],
         outputs=cost,
-        updates=updates,
+        updates=gradient_updates_momentum(cost,classifier.params,learning_rate,momentum),
         givens={
             x: train_set_x[index * batch_size: (index + 1) * batch_size],
             y: train_set_y[index * batch_size: (index + 1) * batch_size]
         }
     )
-    # end-snippet-5
 
     ###############
     # TRAIN MODEL #
